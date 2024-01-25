@@ -27,13 +27,15 @@ class Corpus:
         url = pd.netloc + path + (("?" + pd.query) if pd.query else "")
 
         try:
+            print(pd)
             hashed_link = hashlib.sha224(url).hexdigest()
         except (UnicodeEncodeError, TypeError):
             try:
                 hashed_link = hashlib.sha224(url.encode("utf-8")).hexdigest()
             except UnicodeEncodeError:
                 hashed_link = str(hash(url))
-
+        print(hashed_link)
+        print(self.corpus_base_dir)
         if os.path.exists(os.path.join(self.corpus_base_dir, hashed_link)):
             return os.path.join(self.corpus_base_dir, hashed_link)
         return None
