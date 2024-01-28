@@ -17,6 +17,7 @@ class Crawler:
     def __init__(self, frontier, corpus):
         self.frontier = frontier
         self.corpus = corpus
+        self.discovered = set()
 
     def start_crawling(self):
         """
@@ -96,8 +97,8 @@ class Crawler:
         if response.geturl() != url:
             return False
         #check for very long urls
-        '''if self.is_long_url():
-        #    return False'''
+        if self.is_long_url(url):
+            return False
         # check for dynamic url that...
         '''if self.is_dynamic_url():
             # if...
@@ -106,12 +107,14 @@ class Crawler:
         # if self.contains_trap_patterns():
         #   pass
         #check for history traps
-        #if self.is_history_trap:
-            #return False
+        if self.is_history_trap(url):
+            return False
         
         #check for all duplicates, including ones that have exited frontier
-        #if self.is_duplicate(url):
-            #return False
+        #check if already in discovered SET
+        if self.is_duplicate(url):
+            return False
+        
         
         '''
         4. Are all dynamic URLs trap?
@@ -132,7 +135,7 @@ class Crawler:
             if re.match(pattern, url):
                 return False  # URL is a trap'''
 
-
+        
 
         parsed = urlparse(url)
 
@@ -141,7 +144,7 @@ class Crawler:
             return False
         try:
             
-            ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++return ".ics.uci.edu" in parsed.hostname \
+            return ".ics.uci.edu" in parsed.hostname \
                    and not re.match(".*\.(css|js|bmp|gif|jpe?g|ico" + "|png|tiff?|mid|mp2|mp3|mp4" \
                                     + "|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf" \
                                     + "|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso|epub|dll|cnf|tgz|sha1" \
@@ -154,11 +157,19 @@ class Crawler:
         
         return True
 
-    '''def is_long_url(self, url):
-        return len(url) > 200
+    '''
     def is_dynamic_url(self, url):
         return '?' in url'''
-    '''def is_history_trap(self, url):
+    def is_long_url(self, url):
+        return len(url) > 200
+    def is_duplicate(self, url):
+        if url in self.discovered:
+            return True
+        else:
+            self.discovered.add(url)
+            return False
+    
+    def is_history_trap(self, url):
         path_segments = url.split('/')
 
       
@@ -169,6 +180,6 @@ class Crawler:
                 if consecutive_segments >= 3:
                     return True
 
-        return False'''
+        return False
         
 
