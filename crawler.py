@@ -41,6 +41,8 @@ class Crawler:
         self.most_words_page = ("", 0)
 
         self.subdomain_frequency = defaultdict(int)
+        
+        self.final_url=set()
 
     def start_crawling(self):
         """
@@ -90,9 +92,13 @@ class Crawler:
         outputLinks = []
         # Checks if binary content exists and if the URL is accessible (not 404)
         if url_data['content'] is not None and url_data['http_code'] != 404:
+            if(url_data['final_url'] is not None):
+                self.final_url.add(url_data['final_url'])
+            
             parsed_soup = BeautifulSoup(url_data['content'], 'html.parser')
             soup_content = parsed_soup.get_text()
             words = soup_content.split()
+            
 
             '''
             4. What is the longest page in terms of number of words? (HTML markup doesn’t count as words)
@@ -105,7 +111,8 @@ class Crawler:
 
             if parsed_soup is None: # if there is no html content
                 return []
-
+            if url_data['content'] in self.final_url:
+                return [] #stop redirecting if reached the final url
             pattern = r'href="([^"]*)"'
             # Find all matches
 
@@ -242,3 +249,6 @@ class Crawler:
     def set_most_words_page(self, url, length):
         if length > self.most_words_page[1]:
             self.most_words_page = (url, length)
+            
+    def getWords(self):
+        return self.discovered
