@@ -21,6 +21,7 @@ class Crawler:
         self.frontier = frontier
 
         self.corpus = corpus
+        self.discovered = set()
 
         self.discovered = set()
 
@@ -132,6 +133,7 @@ class Crawler:
 
         #check for very long urls
         if self.is_long_url(url):
+<<<<<<< HEAD
             print("long url")
             self.identified_traps.add(url)
             return False
@@ -140,15 +142,53 @@ class Crawler:
         if self.is_history_trap(url):
             print(">=3 consective history segments", UnicodeTranslateError)
             self.identified_traps.add(url)
+=======
+            return False
+        # check for dynamic url that...
+        '''if self.is_dynamic_url():
+            # if...
+            #   return False
+            pass'''
+        # if self.contains_trap_patterns():
+        #   pass
+        #check for history traps
+        if self.is_history_trap(url):
+>>>>>>> 511a3ffc20d1df33bca112e9c51132fa6ba82486
             return False
         
         #check for all duplicates, including ones that have exited frontier
         #check if already in discovered SET
         if self.is_duplicate(url):
+<<<<<<< HEAD
             # print("Already in discovered SET:", url)
             #self.identified_traps.add(url)
             return False
 
+=======
+            return False
+        
+        
+        '''
+        4. Are all dynamic URLs trap?
+        -- Not necessarily. For example, https://www.ics.uci.edu/community/news/view_news?id=1473 is not
+        a trap.
+
+        How to check if a dynamic url is a trap?
+
+        5. Is every URL which contains the word 'calendar' a trap?
+        -- No. For example, "https://www.reg.uci.edu/calendars/quarterly/2018-2019/quarterly18-19.html"
+        is not a trap. 
+
+        How to check if a url that contains a trigger word is a trap?
+
+        '''
+
+        '''for pattern in trap_patterns:
+            if re.match(pattern, url):
+                return False  # URL is a trap'''
+
+        
+>>>>>>> 511a3ffc20d1df33bca112e9c51132fa6ba82486
 
         parsed = urlparse(url)
 
@@ -170,6 +210,7 @@ class Crawler:
             return False
     
 
+<<<<<<< HEAD
     def convert_relative_to_absolute(self, relative_url, base_url):
         ''' If the URL is relative, convert it to absolute URL '''
         print(base_url, relative_url)
@@ -202,6 +243,13 @@ class Crawler:
     def is_long_url(self, url):
         return len(url) > 300
     
+=======
+    '''
+    def is_dynamic_url(self, url):
+        return '?' in url'''
+    def is_long_url(self, url):
+        return len(url) > 200
+>>>>>>> 511a3ffc20d1df33bca112e9c51132fa6ba82486
     def is_duplicate(self, url):
         if url in self.discovered:
             return True
@@ -221,6 +269,7 @@ class Crawler:
                     return True
         return False
 
+<<<<<<< HEAD
     def is_stop_word(self, word):
         return word in self.stop_words
     
@@ -232,3 +281,8 @@ class Crawler:
     def set_most_words_page(self, url, length):
         if length > self.most_words_page[1]:
             self.most_words_page = (url, length)
+=======
+        return False
+        
+
+>>>>>>> 511a3ffc20d1df33bca112e9c51132fa6ba82486
