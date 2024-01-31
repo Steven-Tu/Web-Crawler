@@ -6,7 +6,8 @@ import heapq
 from urllib.request import urlopen
 import re
 from collections import defaultdict
-from bs4 import BeautifulSoup 
+from bs4 import BeautifulSoup
+import sys
 
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 class Crawler:
     """
     This class is responsible for scraping urls from the next available link in frontier and adding the scraped links to
-    the frontier
+    the frontier. We also modified the crawler to include analytics for the actions it takes while crawling.
     """
 
     def __init__(self, frontier, corpus):
@@ -33,6 +34,7 @@ class Crawler:
         self.stop_words = {
             "a", "able", "about", "above", "abst", "accordance", "according", "accordingly", "across", "act", "actually", "added", "adj", "affected", "affecting", "affects", "after", "afterwards", "again", "against", "ah", "all", "almost", "alone", "along", "already", "also", "although", "always", "am", "among", "amongst", "an", "and", "announce", "another", "any", "anybody", "anyhow", "anymore", "anyone", "anything", "anyway", "anyways", "anywhere", "apparently", "approximately", "are", "aren", "arent", "arise", "around", "as", "aside", "ask", "asking", "at", "auth", "available", "away", "awfully", "b", "back", "be", "became", "because", "become", "becomes", "becoming", "been", "before", "beforehand", "begin", "beginning", "beginnings", "begins", "behind", "being", "believe", "below", "beside", "besides", "between", "beyond", "biol", "both", "brief", "briefly", "but", "by", "c", "ca", "came", "can", "cannot", "can't", "cause", "causes", "certain", "certainly", "co", "com", "come", "comes", "contain", "containing", "contains", "could", "couldnt", "d", "date", "did", "didn't", "different", "do", "does", "doesn't", "doing", "done", "don't", "down", "downwards", "due", "during", "e", "each", "ed", "edu", "effect", "eg", "eight", "eighty", "either", "else", "elsewhere", "end", "ending", "enough", "especially", "et", "et-al", "etc", "even", "ever", "every", "everybody", "everyone", "everything", "everywhere", "ex", "except", "f", "far", "few", "ff", "fifth", "first", "five", "fix", "followed", "following", "follows", "for", "former", "formerly", "forth", "found", "four", "from", "further", "furthermore", "g", "gave", "get", "gets", "getting", "give", "given", "gives", "giving", "go", "goes", "gone", "got", "gotten", "h", "had", "happens", "hardly", "has", "hasn't", "have", "haven't", "having", "he", "hed", "hence", "her", "here", "hereafter", "hereby", "herein", "heres", "hereupon", "hers", "herself", "hes", "hi", "hid", "him", "himself", "his", "hither", "home", "how", "howbeit", "however", "hundred", "i", "id", "ie", "if", "i'll", "im", "immediate", "immediately", "importance", "important", "in", "inc", "indeed", "index", "information", "instead", "into", "invention", "inward", "is", "isn't", "it", "itd", "it'll", "its", "itself", "i've", "j", "just", "k", "keep keeps", "kept", "kg", "km", "know", "known", "knows", "l", "largely", "last", "lately", "later", "latter", "latterly", "least", "less", "lest", "let", "lets", "like", "liked", "likely", "line", "little", "'ll", "look", "looking", "looks", "ltd", "m", "made", "mainly", "make", "makes", "many", "may", "maybe", "me", "mean", "means", "meantime", "meanwhile", "merely", "mg", "might", "million", "miss", "ml", "more", "moreover", "most", "mostly", "mr", "mrs", "much", "mug", "must", "my", "myself", "n", "na", "name", "namely", "nay", "nd", "near", "nearly", "necessarily", "necessary", "need", "needs", "neither", "never", "nevertheless", "new", "next", "nine", "ninety", "no", "nobody", "non", "none", "nonetheless", "noone", "nor", "normally", "nos", "not", "noted", "nothing", "now", "nowhere", "o", "obtain", "obtained", "obviously", "of", "off", "often", "oh", "ok", "okay", "old", "omitted", "on", "once", "one", "ones", "only", "onto", "or", "ord", "other", "others", "otherwise", "ought", "our", "ours", "ourselves", "out", "outside", "over", "overall", "owing", "own", "p", "page", "pages", "part", "particular", "particularly", "past", "per", "perhaps", "placed", "please", "plus", "poorly", "possible", "possibly", "potentially", "pp", "predominantly", "present", "previously", "primarily", "probably", "promptly", "proud", "provides", "put", "q", "que", "quickly", "quite", "qv", "r", "ran", "rather", "rd", "re", "readily", "really", "recent", "recently", "ref", "refs", "regarding", "regardless", "regards", "related", "relatively", "research", "respectively", "resulted", "resulting", "results", "right", "run", "s", "said", "same", "saw", "say", "saying", "says", "sec", "section", "see", "seeing", "seem", "seemed", "seeming", "seems", "seen", "self", "selves", "sent", "seven", "several", "shall", "she", "shed", "she'll", "shes", "should", "shouldn't", "show", "showed", "shown", "showns", "shows", "significant", "significantly", "similar", "similarly", "since", "six", "slightly", "so", "some", "somebody", "somehow", "someone", "somethan", "something", "sometime", "sometimes", "somewhat", "somewhere", "soon", "sorry", "specifically", "specified", "specify", "specifying", "still", "stop", "strongly", "sub", "substantially", "successfully", "such", "sufficiently", "suggest", "sup", "sure t", "take", "taken", "taking", "tell", "tends", "th", "than", "thank", "thanks", "thanx", "that", "that'll", "thats", "that've", "the", "their", "theirs", "them", "themselves", "then", "thence", "there", "thereafter", "thereby", "thered", "therefore", "therein", "there'll", "thereof", "therere", "theres", "thereto", "thereupon", "there've", "these", "they", "theyd", "they'll", "theyre", "they've", "think", "this", "those", "thou", "though", "thoughh", "thousand", "throug", "through", "throughout", "thru", "thus", "til", "tip", "to", "together", "too", "took", "toward", "towards", "tried", "tries", "truly", "try", "trying", "ts", "twice", "two", "u", "un", "under", "unfortunately", "unless", "unlike", "unlikely", "until", "unto", "up", "upon", "ups", "us", "use", "used", "useful", "usefully", "usefulness", "uses", "using", "usually", "v", "value", "various", "'ve", "very", "via", "viz", "vol", "vols", "vs", "w", "want", "wants", "was", "wasnt", "way", "we", "wed", "welcome", "we'll", "went", "were", "werent", "we've", "what", "whatever", "what'll", "whats", "when", "whence", "whenever", "where", "whereafter", "whereas", "whereby", "wherein", "wheres", "whereupon", "wherever", "whether", "which", "while", "whim", "whither", "who", "whod", "whoever", "whole", "who'll", "whom", "whomever", "whos", "whose", "why", "widely", "willing", "wish", "with", "within", "without", "wont", "words", "world", "would", "wouldnt", "www", "x", "y", "yes", "yet", "you", "youd", "you'll", "your", "youre", "yours", "yourself", "yourselves", "you've", "z", "zero",
         }
+
         self.word_frequencies = defaultdict(int)
 
         self.most_words_page = ("", 0)
@@ -60,7 +62,7 @@ class Crawler:
             for next_link in self.extract_next_links(url_data):
                 if self.is_valid(next_link):
                     self.subdomain_frequency[hostname] += 1 # Analytics #1
-                    print("Subdomain:", hostname, "Frequency:", self.subdomain_frequency[hostname])
+                    # print("Subdomain:", hostname, "Frequency:", self.subdomain_frequency[hostname])
                     outlinks += 1
                     if self.corpus.get_file_name(next_link) is not None:
                         self.frontier.add_url(next_link)
@@ -68,9 +70,9 @@ class Crawler:
                         max_outlinks = outlinks
                         max_link = link
 
-        #Adds to class attributes for analytics #2
-        self.page_with_most_outlinks["url"] = max_link
-        self.page_with_most_outlinks["count"] = max_outlinks
+            #Adds to class attributes for analytics #2
+            self.page_with_most_outlinks["url"] = max_link
+            self.page_with_most_outlinks["count"] = max_outlinks
 
 
     def extract_next_links(self, url_data): # http://www.ics.uci.edu/
@@ -133,7 +135,6 @@ class Crawler:
 
         #check for very long urls
         if self.is_long_url(url):
-<<<<<<< HEAD
             print("long url")
             self.identified_traps.add(url)
             return False
@@ -142,53 +143,15 @@ class Crawler:
         if self.is_history_trap(url):
             print(">=3 consective history segments", UnicodeTranslateError)
             self.identified_traps.add(url)
-=======
-            return False
-        # check for dynamic url that...
-        '''if self.is_dynamic_url():
-            # if...
-            #   return False
-            pass'''
-        # if self.contains_trap_patterns():
-        #   pass
-        #check for history traps
-        if self.is_history_trap(url):
->>>>>>> 511a3ffc20d1df33bca112e9c51132fa6ba82486
             return False
         
         #check for all duplicates, including ones that have exited frontier
         #check if already in discovered SET
         if self.is_duplicate(url):
-<<<<<<< HEAD
             # print("Already in discovered SET:", url)
             #self.identified_traps.add(url)
             return False
 
-=======
-            return False
-        
-        
-        '''
-        4. Are all dynamic URLs trap?
-        -- Not necessarily. For example, https://www.ics.uci.edu/community/news/view_news?id=1473 is not
-        a trap.
-
-        How to check if a dynamic url is a trap?
-
-        5. Is every URL which contains the word 'calendar' a trap?
-        -- No. For example, "https://www.reg.uci.edu/calendars/quarterly/2018-2019/quarterly18-19.html"
-        is not a trap. 
-
-        How to check if a url that contains a trigger word is a trap?
-
-        '''
-
-        '''for pattern in trap_patterns:
-            if re.match(pattern, url):
-                return False  # URL is a trap'''
-
-        
->>>>>>> 511a3ffc20d1df33bca112e9c51132fa6ba82486
 
         parsed = urlparse(url)
 
@@ -210,10 +173,9 @@ class Crawler:
             return False
     
 
-<<<<<<< HEAD
     def convert_relative_to_absolute(self, relative_url, base_url):
         ''' If the URL is relative, convert it to absolute URL '''
-        print(base_url, relative_url)
+        # print(base_url, relative_url)
         if relative_url[0:2] == "//":
             if base_url[0:5] == "https":
                 return urljoin("https:", relative_url)
@@ -231,25 +193,15 @@ class Crawler:
             for i in range(num_up_dir):
                 base_url_segments.pop()
             relative_url = relative_url.replace('../', '')
-            print(base_url_segments)
             absolute_path = '/'.join(base_url_segments) + '/' + relative_url
             print("CREATED ABSOLUTE PATH @:", absolute_path)
             return absolute_path
         else:
             return relative_url
 
-
-
     def is_long_url(self, url):
         return len(url) > 300
     
-=======
-    '''
-    def is_dynamic_url(self, url):
-        return '?' in url'''
-    def is_long_url(self, url):
-        return len(url) > 200
->>>>>>> 511a3ffc20d1df33bca112e9c51132fa6ba82486
     def is_duplicate(self, url):
         if url in self.discovered:
             return True
@@ -258,18 +210,27 @@ class Crawler:
             return False
     
     def is_history_trap(self, url):
+        # print("History trap check")
         path_segments = url.split('/')
+        # print("Path Segments:", path_segments)
         consecutive_segments=0
       
         # 1: check if there are continuously repeating sub-directories?
-        for i in range(1, len(path_segments) - 1):
+        for i in range(2, len(path_segments) - 1):
             if path_segments[i] == path_segments[i + 1]:
                 consecutive_segments += 1
                 if consecutive_segments >= 3:
                     return True
+        
+        # 2. Check for incrementing/decrementing numerical parameters
+        if re.search(r'/\d+/\d+/', url):
+            return True
+
+        # 3. Check a timestamp or session id pattern
+        if re.search(r'\d{4}-\d{2}-\d{2}|\d{4}/\d{2}/\d{2}|[A-Za-z0-9]{32}', url):
+            return True
         return False
 
-<<<<<<< HEAD
     def is_stop_word(self, word):
         return word in self.stop_words
     
@@ -281,8 +242,3 @@ class Crawler:
     def set_most_words_page(self, url, length):
         if length > self.most_words_page[1]:
             self.most_words_page = (url, length)
-=======
-        return False
-        
-
->>>>>>> 511a3ffc20d1df33bca112e9c51132fa6ba82486
