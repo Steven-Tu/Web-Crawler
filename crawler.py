@@ -1,6 +1,7 @@
 import logging
 import re
 from urllib.parse import urlparse, urljoin
+from urllib.error import HTTPError
 from lxml import etree, html
 import heapq
 from urllib.request import urlopen
@@ -127,11 +128,10 @@ class Crawler:
         try:
             response = urlopen(url)
             assert response.getcode() == 200
-        except:
+        except (AssertionError, ValueError, HTTPError) as e:
             # print("code != 200")
             #self.identified_traps.add(url)
             return False
-
 
         #check for very long urls
         if self.is_long_url(url):
@@ -222,7 +222,7 @@ class Crawler:
                 if consecutive_segments >= 3:
                     return True
         
-        # 2. Check for incrementing/decrementing numerical parameters
+        # 2. Check for incrementing/decrementing numerical patterns for the parameters
         if re.search(r'/\d+/\d+/', url):
             return True
 
