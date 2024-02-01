@@ -132,7 +132,9 @@ class Crawler:
         filter out crawler traps. Duplicated urls will be taken care of by frontier. You don't need to check for duplication
         in this method
         """
-        print("Checking if URL is valid:", url)
+        parsed_url = urlparse(url)
+
+        print("\nChecking if URL is valid:", url)
         # check if URL is accessible
         try:
             response = urlopen(url)
@@ -146,13 +148,14 @@ class Crawler:
         if self.is_long_url(url):
             print("long url")
             self.identified_traps.add(url)
-            print(self.identified_traps)
+            print("Identified traps:", self.identified_traps)
             return False
         
         #check for history traps
         if self.is_history_trap(url):
+            print("history trap")
             self.identified_traps.add(url)
-            print(self.identified_traps)
+            print("Identified traps:", self.identified_traps)
             return False
         
         #check for all duplicates, including ones that have exited frontier
@@ -222,11 +225,10 @@ class Crawler:
     def is_history_trap(self, url):
         path_segments = url.split('/')
         
-        print(path_segments)
-
         # 1: check if there are repeating sub-directories in general
         for i in range(len(path_segments)):
-            if path_segments.count(path_segments[i]) > 1:
+            if path_segments[i] != "" and path_segments.count(path_segments[i]) > 1:
+                print("Repeating sub-directories:", path_segments[i])
                 return True
         
         # 2. Check for incrementing/decrementing numerical patterns for the parameters
@@ -240,6 +242,8 @@ class Crawler:
         #4 check historically visited URLs, see if only change is the last path segment numerically
         history_check = url.split('/')
         last_path_segment = history_check.pop()
+        if last_path_segment == "":
+            last_path_segment = history_check.pop()
         if not last_path_segment.isdigit():
             return False
         else:
