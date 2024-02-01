@@ -1,15 +1,14 @@
 import logging
 import re
 from urllib.parse import urlparse, urljoin
-from urllib.error import HTTPError
-from lxml import etree, html
+from urllib.error import HTTPError, URLError
 import heapq
 from urllib.request import urlopen
 import re
 from collections import defaultdict
 from bs4 import BeautifulSoup
-import sys
 from itertools import islice
+from http.client import InvalidURL
 
 
 logger = logging.getLogger(__name__)
@@ -24,7 +23,6 @@ class Crawler:
         self.frontier = frontier
 
         self.corpus = corpus
-        self.discovered = set()
 
         self.discovered = set()
 
@@ -114,7 +112,7 @@ class Crawler:
 
             if parsed_soup is None: # if there is no html content
                 return []
-            if url_data['content'] in self.final_url:
+            if url_data['url'] in self.final_url:
                 return [] #stop redirecting if reached the final url
             pattern = r'href="([^"]*)"'
             # Find all matches
@@ -134,11 +132,12 @@ class Crawler:
         filter out crawler traps. Duplicated urls will be taken care of by frontier. You don't need to check for duplication
         in this method
         """
+        print("Checking if URL is valid:", url)
         # check if URL is accessible
         try:
             response = urlopen(url)
             assert response.getcode() == 200
-        except (AssertionError, ValueError, HTTPError) as e:
+        except (AssertionError, ValueError, HTTPError, URLError, InvalidURL) as e:
             # print("code != 200")
             #self.identified_traps.add(url)
             return False
@@ -147,12 +146,13 @@ class Crawler:
         if self.is_long_url(url):
             print("long url")
             self.identified_traps.add(url)
+            print(self.identified_traps)
             return False
         
         #check for history traps
         if self.is_history_trap(url):
-            print(">=3 consective history segments", UnicodeTranslateError)
             self.identified_traps.add(url)
+            print(self.identified_traps)
             return False
         
         #check for all duplicates, including ones that have exited frontier
@@ -220,26 +220,40 @@ class Crawler:
             return False
     
     def is_history_trap(self, url):
-        # print("History trap check")
         path_segments = url.split('/')
-        # print("Path Segments:", path_segments)
-        consecutive_segments=0
-      
-        # 1: check if there are continuously repeating sub-directories?
-        for i in range(2, len(path_segments) - 1):
-            if path_segments[i] == path_segments[i + 1]:
-                consecutive_segments += 1
-                if consecutive_segments >= 3:
-                    return True
+        
+        print(path_segments)
+
+        # 1: check if there are repeating sub-directories in general
+        for i in range(len(path_segments)):
+            if path_segments.count(path_segments[i]) > 1:
+                return True
         
         # 2. Check for incrementing/decrementing numerical patterns for the parameters
         if re.search(r'/\d+/\d+/', url):
             return True
 
         # 3. Check a timestamp or session id pattern
-        if re.search(r'\d{4}-\d{2}-\d{2}|\d{4}/\d{2}/\d{2}|[A-Za-z0-9]{32}', url):
+        if re.search(r'\d{4}-\d{2}-\d{2}|\d{4}/\d{2}/\d{2}|\d{2}/\d{2}/\d{4}|\d{4}/d{2}|\d{3}/\d{8}|[A-Za-z0-9]{32}', url):
             return True
+        
+        #4 check historically visited URLs, see if only change is the last path segment numerically
+        history_check = url.split('/')
+        last_path_segment = history_check.pop()
+        if not last_path_segment.isdigit():
+            return False
+        else:
+            print(history_check)
+            historical_paths = "/".join(history_check)
+            print("Check to see if matching discovered paths:", historical_paths)
+            if historical_paths in self.discovered:
+                print("Found a historical trap")
+                return True
         return False
+    
+
+
+ 
 
     def is_stop_word(self, word):
         return word in self.stop_words
