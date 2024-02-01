@@ -139,7 +139,7 @@ class Crawler:
         try:
             response = urlopen(url)
             assert response.getcode() == 200
-        except (AssertionError, ValueError, HTTPError, URLError, InvalidURL) as e:
+        except (AssertionError, ValueError, HTTPError, URLError, InvalidURL, ConnectionResetError) as e:
             # print("code != 200")
             #self.identified_traps.add(url)
             return False
