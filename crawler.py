@@ -9,6 +9,7 @@ import re
 from collections import defaultdict
 from bs4 import BeautifulSoup
 import sys
+from itertools import islice
 
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,8 @@ class Crawler:
             #Adds to class attributes for analytics #2
             self.page_with_most_outlinks["url"] = max_link
             self.page_with_most_outlinks["count"] = max_outlinks
+        #output analysis
+        self.output_analysis()
 
 
     def extract_next_links(self, url_data): # http://www.ics.uci.edu/
@@ -250,5 +253,31 @@ class Crawler:
         if length > self.most_words_page[1]:
             self.most_words_page = (url, length)
             
-    def getWords(self):
-        return self.discovered
+    def get50Words(self):
+        return list(islice(self.word_frequencies.keys(),50))
+    
+    def output_analysis(self):
+        with open('analysis.txt','w') as file:
+            file.write('Subdomains and URLs counted:\n')
+            #Analysis 1
+            for key, value in self.subdomain_frequency:
+                file.write(key+" "+value+"\n")
+                
+            #Analysis 2
+            file.write("Page with most valid outlinks: "+self.page_with_most_outlinks['url']+"\n")
+            
+            #Analysis 3
+            file.write("Downloaded URLs: \n")
+            file.write(self.discovered+'\n')
+            file.write("Traps: \n")
+            file.write(self.identified_traps+'\n')
+            
+            #Analysis 4
+            file.write("Longest page with words: \n")
+            file.write(self.most_words_page+'\n')
+            
+            #Analysis 5
+            file.write("50 most common words: \n")
+            file.write(self.get50Words())
+            
+            
