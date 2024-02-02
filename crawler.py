@@ -264,8 +264,9 @@ class Crawler:
     
     def get_most_common_words(self):
         if len(self.word_frequencies) < 50:
-            heapq.nlargest(len(self.word_frequencies), self.word_frequencies, key=self.word_frequencies.get)
-        heapq.nlargest(50, self.word_frequencies, key=self.word_frequencies.get)
+            return heapq.nlargest(len(self.word_frequencies), self.word_frequencies, key=self.word_frequencies.get)
+        else:
+            return heapq.nlargest(50, self.word_frequencies, key=self.word_frequencies.get)
     
     def set_most_words_page(self, url, length):
         if length > self.most_words_page[1]:
@@ -296,6 +297,7 @@ class Crawler:
             
             #Analysis 5
             file.write("50 most common words: \n")
-            file.write(self.get50Words())
+            #file.write(self.get50Words())
+            file.write(self.get_most_common_words())
             
             
