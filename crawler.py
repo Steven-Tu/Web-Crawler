@@ -1,6 +1,6 @@
 import logging
 import re
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin, parse_qs
 from urllib.error import HTTPError, URLError
 import heapq
 from urllib.request import urlopen
@@ -26,6 +26,8 @@ class Crawler:
 
         self.discovered = set()
 
+        self.query_params = dict()
+
         self.identified_traps = set()
 
         self.page_with_most_outlinks = {"url": None, "count": 0}
@@ -42,6 +44,10 @@ class Crawler:
         self.subdomain_frequency = defaultdict(int)
         
         self.final_url=set()
+
+
+        self.redirections = defaultdict(str)
+        #self.final_url = ""
 
     def start_crawling(self):
         """
@@ -62,7 +68,7 @@ class Crawler:
             hostname = urlparse(link).hostname
 
             for next_link in self.extract_next_links(url_data):
-                if self.is_valid(next_link):
+                if self.is_valid(next_link, url_data):
                     self.subdomain_frequency[hostname] += 1 # Analytics #1
                     # print("Subdomain:", hostname, "Frequency:", self.subdomain_frequency[hostname])
                     outlinks += 1
@@ -93,6 +99,7 @@ class Crawler:
         outputLinks = []
         # Checks if binary content exists and if the URL is accessible (not 404)
         if url_data['content'] is not None and url_data['http_code'] != 404:
+            print("Final URL:", url_data['final_url'])
             if(url_data['final_url'] is not None):
                 self.final_url.add(url_data['final_url'])
             
@@ -107,7 +114,7 @@ class Crawler:
             '''
             self.set_most_words_page(url_data["url"], len(words))
             for word in words:
-                if self.is_stop_word(word) is False:
+                if self.is_stop_word(word) is False and word.isalpha():
                     self.word_frequencies[word] += 1
 
             if parsed_soup is None: # if there is no html content
@@ -126,13 +133,14 @@ class Crawler:
  
         
 
-    def is_valid(self, url):
+    def is_valid(self, url, url_data):
         """
         Function returns True or False based on whether the url has to be fetched or not. This is a great place to
         filter out crawler traps. Duplicated urls will be taken care of by frontier. You don't need to check for duplication
         in this method
         """
         parsed = urlparse(url)
+        
 
         if parsed.scheme not in set(["http", "https"]):
             print('parsed.scheme not in set(["http", "https"])')
@@ -142,14 +150,14 @@ class Crawler:
         if self.is_long_url(url):
             print("long url")
             self.identified_traps.add(url)
-            print("Identified traps:", self.identified_traps)
+            # print("Identified traps:", self.identified_traps)
             return False
         
         #check for history traps
         if self.is_history_trap(url):
             print("history trap")
             self.identified_traps.add(url)
-            print("Identified traps:", self.identified_traps)
+            # print("Identified traps:", self.identified_traps)
             return False
         
         #check for all duplicates, including ones that have exited frontier
@@ -168,7 +176,29 @@ class Crawler:
         #     # print("code != 200")
         #     #self.identified_traps.add(url)
         #     return False
-        
+        redirected_urls = [url]
+        current_url = url
+
+        # while True and current_url != url_data['final_url']:
+        #      try:
+        #          response = urlopen(current_url)
+        #          if response.getcode() // 100 == 3:
+        #              current_url = response.getheader('Location')
+        #              redirected_urls.append(current_url)
+        #          else:
+        #              break
+        #      except (AssertionError, ValueError, HTTPError, URLError, InvalidURL, ConnectionResetError) as e:
+        #          if current_url==url:
+        #              return False
+        #          break
+        #      except:
+        #          break
+            
+        # if current_url != url:
+        #     redirected_urls.append(current_url)
+
+        self.redirections[url] = redirected_urls
+    
         try:
             
             return ".ics.uci.edu" in parsed.hostname \
@@ -220,6 +250,17 @@ class Crawler:
     
     def is_history_trap(self, url):
         path_segments = url.split('/')
+        parsed = urlparse(url)
+        query_params = parse_qs(parsed.query)
+
+        if query_params:
+            for key, value in query_params.items():
+                if len(value) > 1: # multiple values for query param
+                    self.query_params[key] = value
+                    return True
+                if len(value[0]) > 20: # long query param value
+                    self.query_params[key] = value
+                    return True
         
         # 1: check if there are repeating sub-directories in general
         for i in range(len(path_segments)):
@@ -236,24 +277,25 @@ class Crawler:
             return True
         
         #4 check historically visited URLs, see if only change is the last path segment numerically
-        history_check = url.split('/')
-        last_path_segment = history_check.pop()
-        if last_path_segment == "":
-            last_path_segment = history_check.pop()
-        if not last_path_segment.isdigit():
-            return False
-        else:
-            print(history_check)
-            historical_paths = "/".join(history_check)
-            print("Check to see if matching discovered paths:", historical_paths)
-            if historical_paths in self.discovered:
-                print("Found a historical trap")
-                return True
+        # history_check = url.split('/')
+        # last_path_segment = history_check.pop()
+        # if last_path_segment == "":
+        #     last_path_segment = history_check.pop()
+        # if not last_path_segment.isdigit():
+        #     return False
+        # else:
+        #     print(history_check)
+        #     historical_paths = "/".join(history_check)
+        #     print("Check to see if matching discovered paths:", historical_paths)
+        #     if historical_paths in self.discovered:
+        #         print("Found a historical trap")
+        #         return True
+
+        #5 Check to see if query params only differ by integer changes
+        
+
         return False
     
-
-
- 
 
     def is_stop_word(self, word):
         return word in self.stop_words
@@ -268,32 +310,49 @@ class Crawler:
         if length > self.most_words_page[1]:
             self.most_words_page = (url, length)
             
-    def get50Words(self):
-        return list(islice(self.word_frequencies.keys(),50))
     
     def output_analysis(self):
-        with open('analysis.txt','w') as file:
+        with open('analysis.txt','w', encoding='utf-8') as file:
             file.write('Subdomains and URLs counted:\n')
             #Analysis 1
             for key, value in self.subdomain_frequency.items():
-                file.write(key+" "+ str(value) +"\n")
+                file.write(f"{key} {value}\n")
                 
             #Analysis 2
-            file.write("Page with most valid outlinks: "+self.page_with_most_outlinks['url']+"\n")
-            
+            page_url = self.page_with_most_outlinks['url'] if self.page_with_most_outlinks['url'] else "None"
+            file.write(f"Page with most valid outlinks: {page_url} with {self.page_with_most_outlinks['count']} outlinks\n")      
+
             #Analysis 3
             file.write("Downloaded URLs: \n")
-            file.write(self.discovered+'\n')
+            for url in self.discovered:
+                file.write(url + '\n')
             file.write("Traps: \n")
-            file.write(self.identified_traps+'\n')
+            for trap in self.identified_traps:
+                file.write(trap + '\n')
             
             #Analysis 4
             file.write("Longest page with words: \n")
-            file.write(self.most_words_page+'\n')
+            file.write(f"{self.most_words_page[0]} with {self.most_words_page[1]} words\n")
             
             #Analysis 5
             file.write("50 most common words: \n")
-            #file.write(self.get50Words())
-            file.write(self.get_most_common_words())
+            common_words = self.get_most_common_words()  # Assuming this function returns a list of words
+            for word in common_words:
+                file.write(word + '\n')
+
+            # file.write("Redirections: \n")
+            # for key, value in self.redirections.items():
+            #     for each_url in value:
+            #         file.write(each_url + " -> ")
+
+            file.write("\n")
+            #file.write(value)
+
+            #Analysis 6: Query Params
+
+            file.write("Query Params: \n")
+            for key, value in self.query_params.items():
+                file.write(f"{key}: {value}\n")
+            
             
             
