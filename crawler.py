@@ -132,16 +132,10 @@ class Crawler:
         filter out crawler traps. Duplicated urls will be taken care of by frontier. You don't need to check for duplication
         in this method
         """
-        parsed_url = urlparse(url)
+        parsed = urlparse(url)
 
-        print("\nChecking if URL is valid:", url)
-        # check if URL is accessible
-        try:
-            response = urlopen(url)
-            assert response.getcode() == 200
-        except (AssertionError, ValueError, HTTPError, URLError, InvalidURL, ConnectionResetError) as e:
-            # print("code != 200")
-            #self.identified_traps.add(url)
+        if parsed.scheme not in set(["http", "https"]):
+            print('parsed.scheme not in set(["http", "https"])')
             return False
 
         #check for very long urls
@@ -165,14 +159,16 @@ class Crawler:
             #self.identified_traps.add(url)
             return False
 
-
-        parsed = urlparse(url)
-
-        # print("Parsed hostname:", parsed.hostname, "is a subdomain of ics.uci.edu", ".ics.uci.edu" in parsed.hostname)
-        if parsed.scheme not in set(["http", "https"]):
-            print('parsed.scheme not in set(["http", "https"])')
+        print("\nChecking if URL is valid:", url)
+        # check if URL is accessible
+        try:
+            response = urlopen(url, timeout=10)
+            assert response.getcode() == 200
+        except (AssertionError, ValueError, HTTPError, URLError, InvalidURL, ConnectionResetError) as e:
+            # print("code != 200")
+            #self.identified_traps.add(url)
             return False
-
+        
         try:
             
             return ".ics.uci.edu" in parsed.hostname \
