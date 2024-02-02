@@ -161,13 +161,13 @@ class Crawler:
 
         print("\nChecking if URL is valid:", url)
         # check if URL is accessible
-        try:
-            response = urlopen(url, timeout=10)
-            assert response.getcode() == 200
-        except (AssertionError, ValueError, HTTPError, URLError, InvalidURL, ConnectionResetError) as e:
-            # print("code != 200")
-            #self.identified_traps.add(url)
-            return False
+        # try:
+        #     response = urlopen(url, timeout=10)
+        #     assert response.getcode() == 200
+        # except (AssertionError, ValueError, HTTPError, URLError, InvalidURL, ConnectionResetError) as e:
+        #     # print("code != 200")
+        #     #self.identified_traps.add(url)
+        #     return False
         
         try:
             
@@ -228,11 +228,11 @@ class Crawler:
                 return True
         
         # 2. Check for incrementing/decrementing numerical patterns for the parameters
-        if re.search(r'/\d+/\d+/', url):
+        if re.search(r'/\d+/\d+/', url): # https://poop.com/123/456
             return True
 
         # 3. Check a timestamp or session id pattern
-        if re.search(r'\d{4}-\d{2}-\d{2}|\d{4}/\d{2}/\d{2}|\d{2}/\d{2}/\d{4}|\d{4}/d{2}|\d{3}/\d{8}|[A-Za-z0-9]{32}', url):
+        if re.search(r'\d{4}-\d{2}-\d{2}|\d{4}/\d{2}/\d{2}|\d{2}/\d{2}/\d{4}|\d{4}/d{2}|\d{3}/\d{8}|[A-Za-z0-9]{32}', url): # https://poop.com/2020-12-31
             return True
         
         #4 check historically visited URLs, see if only change is the last path segment numerically
@@ -276,7 +276,7 @@ class Crawler:
             file.write('Subdomains and URLs counted:\n')
             #Analysis 1
             for key, value in self.subdomain_frequency.items():
-                file.write(key+" "+value+"\n")
+                file.write(key+" "+ str(value) +"\n")
                 
             #Analysis 2
             file.write("Page with most valid outlinks: "+self.page_with_most_outlinks['url']+"\n")
