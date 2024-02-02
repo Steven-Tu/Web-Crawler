@@ -279,7 +279,7 @@ class Crawler:
         with open('analysis.txt','w') as file:
             file.write('Subdomains and URLs counted:\n')
             #Analysis 1
-            for key, value in self.subdomain_frequency:
+            for key, value in self.subdomain_frequency.items():
                 file.write(key+" "+value+"\n")
                 
             #Analysis 2
