@@ -253,14 +253,21 @@ class Crawler:
         parsed = urlparse(url)
         query_params = parse_qs(parsed.query)
 
+   
         if query_params:
+           
             for key, value in query_params.items():
-                if len(value) > 1: # multiple values for query param
+                if len(value) > 1: # multiple occurences for the same query param
                     self.query_params[key] = value
                     return True
-                if len(value[0]) > 20: # long query param value
+                
+                if len(value[0]) > 20: # long query param value char count
                     self.query_params[key] = value
                     return True
+                
+            if len(query_params) > 20: # has a very large number of parameters
+                        self.query_params[key] = value
+                        return True
         
         # 1: check if there are repeating sub-directories in general
         for i in range(len(path_segments)):
