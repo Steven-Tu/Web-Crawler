@@ -25,6 +25,7 @@ class Crawler:
         self.corpus = corpus
 
         self.discovered = set()
+        self.url_dictionary = dict()
 
         self.query_params = dict()
 
@@ -140,7 +141,7 @@ class Crawler:
         in this method
         """
         parsed = urlparse(url)
-        
+        #url_key = (parsed.scheme, parsed.netloc, parsed.path)
 
         if parsed.scheme not in set(["http", "https"]):
             print('parsed.scheme not in set(["http", "https"])')
@@ -153,20 +154,22 @@ class Crawler:
             # print("Identified traps:", self.identified_traps)
             return False
         
+
+        
+        #check for all duplicates, including ones that have exited frontier
+        #check if already in discovered SET
+        if self.is_duplicate(url, parsed):
+            # print("Already in discovered SET:", url)
+            #self.identified_traps.add(url)
+            return False
+        
         #check for history traps
-        if self.is_history_trap(url):
+        if self.is_history_trap(url, parsed):
             print("history trap")
             self.identified_traps.add(url)
             # print("Identified traps:", self.identified_traps)
             return False
         
-        #check for all duplicates, including ones that have exited frontier
-        #check if already in discovered SET
-        if self.is_duplicate(url):
-            # print("Already in discovered SET:", url)
-            #self.identified_traps.add(url)
-            return False
-
         print("\nChecking if URL is valid:", url)
         # check if URL is accessible
         # try:
@@ -176,9 +179,14 @@ class Crawler:
         #     # print("code != 200")
         #     #self.identified_traps.add(url)
         #     return False
+        
+        
+        
+        
         redirected_urls = [url]
         current_url = url
-
+        '''
+        ADDING TO REDIRECTION PATHS DICTIONARY
         # while True and current_url != url_data['final_url']:
         #      try:
         #          response = urlopen(current_url)
@@ -198,6 +206,7 @@ class Crawler:
         #     redirected_urls.append(current_url)
 
         self.redirections[url] = redirected_urls
+        '''
     
         try:
             
@@ -241,19 +250,38 @@ class Crawler:
     def is_long_url(self, url):
         return len(url) > 300
     
-    def is_duplicate(self, url):
+    def is_duplicate(self, url, parsed):
         if url in self.discovered:
             return True
         else:
             self.discovered.add(url)
+            #self.discovered_url_keys[(parsed.scheme, parsed.netloc, parsed.path)] = parse_qs(parsed.query) #parsed.query
             return False
     
-    def is_history_trap(self, url):
+    def is_history_trap(self, url, max_query_length=10):
         path_segments = url.split('/')
         parsed = urlparse(url)
         query_params = parse_qs(parsed.query)
 
-   
+
+        '''ADDED CODE'''
+        # NEW WAY OF HISTORY DETECTION: 
+        url_key = (parsed.scheme, parsed.netloc, parsed.path)
+        if url_key not in self.url_dictionary:
+            self.url_dictionary[url_key] = set()
+        else:
+            # * In this block, the (parsed.scheme, parsed.netloc, parsed.path) have ALREADY been discovered before.
+                        
+            # Check if the same query exists in the dictionary with appended values
+            if frozenset(query_params.items()) in self.url_dictionary[url_key]:
+                return True  # History trap detected
+
+         # Check if the query is of a certain length
+        if len(query_params) > max_query_length:
+            return True  # History trap detected due to excessive query length
+
+        ''' OUR OLD WAY OF HISTORY TRAP DETECTION
+
         if query_params:
            
             for key, value in query_params.items():
@@ -268,6 +296,10 @@ class Crawler:
             if len(query_params) > 20: # has a very large number of parameters
                         self.query_params[key] = value
                         return True
+        '''
+                    
+                    
+                    
         
         # 1: check if there are repeating sub-directories in general
         for i in range(len(path_segments)):
@@ -300,8 +332,20 @@ class Crawler:
 
         #5 Check to see if query params only differ by integer changes
         
+        
+        
+        
+        
+        
+        '''ADDED CODE'''
+        # Else, Update the dictionary with the current query parameters for future comparisons
+        self.url_dictionary[url_key].add(frozenset(query_params.items()))
+        for key, value in query_params.items():
+            self.query_params[key] = value
+        
 
-        return False
+
+        return False  # No history trap
     
 
     def is_stop_word(self, word):
