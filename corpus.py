@@ -1,7 +1,7 @@
 import hashlib
 import os
 from urllib.parse import urlparse
-
+from urllib.request import urlopen
 from cbor import cbor
 
 
@@ -57,7 +57,7 @@ class Corpus:
         :return: a dictionary containing the http response for the given url
         """
 
-        file_name = self.get_file_name(url)
+        file_name = self.get_file_name(url) # https://poop.com --> https://loltyler1.com/discount/alpha
         if file_name is None:
             url_data = {
                 "url": url,
@@ -80,6 +80,33 @@ class Corpus:
                     if header[b'k'][b'value'] == b'Content-Type':
                         return str(header[b'v'][b'value'])
                 return None
+##################################################################################
+            
+
+            redirected_urls = [url]
+            # current_url = url
+
+            # while True and current_url != data_dict[b'final_url'][b'value']:
+            #     try:
+            #         response = urlopen(current_url)
+            #         if response.getcode() // 100 == 3:
+            #             current_url = response.getheader('Location')
+            #             redirected_urls.append(current_url)
+            #         else:
+            #             break
+            #     #except HTTPError as e:
+            #     #    #handle HTTP errors, if any
+            #     #    break
+            #     except:
+            #         break
+            # if current_url != url:
+            #     redirected_urls.append(current_url)
+            '''
+            start url = "url"
+            #list of redirects = "redirected_urls"
+            #final url = "current_url" when finishes
+            '''
+
 
             url_data = {
                 "url": url,
@@ -88,7 +115,8 @@ class Corpus:
                 "content_type": get_content_type(data_dict),
                 "size": os.stat(file_name).st_size,
                 "is_redirected": data_dict[b'is_redirected'][b'value'] if b'is_redirected' in data_dict and b'value' in data_dict[b'is_redirected'] else False,
-                "final_url": data_dict[b'final_url'][b'value'] if b'final_url' in data_dict and b'value' in data_dict[b'final_url'] else None
+                "final_url": data_dict[b'final_url'][b'value'] if b'final_url' in data_dict and b'value' in data_dict[b'final_url'] else None,
+                "redirects": redirected_urls #Added
             }
 
         return url_data

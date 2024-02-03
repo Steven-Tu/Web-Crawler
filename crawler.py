@@ -46,7 +46,6 @@ class Crawler:
         
         self.final_url=set()
 
-
         self.redirections = defaultdict(str)
         #self.final_url = ""
 
@@ -84,6 +83,7 @@ class Crawler:
             self.page_with_most_outlinks["count"] = max_outlinks
         #output analysis
         self.output_analysis()
+        print(self.url_dictionary)
 
 
     def extract_next_links(self, url_data): # http://www.ics.uci.edu/
@@ -163,6 +163,13 @@ class Crawler:
             #self.identified_traps.add(url)
             return False
         
+
+        if self.has_invalid_param(url):
+            return False
+        if self.has_invalid_patterns(url):
+            return False
+        
+
         #check for history traps
         if self.is_history_trap(url, parsed):
             print("history trap")
@@ -258,32 +265,12 @@ class Crawler:
             #self.discovered_url_keys[(parsed.scheme, parsed.netloc, parsed.path)] = parse_qs(parsed.query) #parsed.query
             return False
     
-    def is_history_trap(self, url, max_query_length=10):
-        path_segments = url.split('/')
+    def has_invalid_param(self, url):
+        #path_segments = url.split('/')
         parsed = urlparse(url)
         query_params = parse_qs(parsed.query)
-
-
-        '''ADDED CODE'''
-        # NEW WAY OF HISTORY DETECTION: 
-        url_key = (parsed.scheme, parsed.netloc, parsed.path)
-        if url_key not in self.url_dictionary:
-            self.url_dictionary[url_key] = set()
-        else:
-            # * In this block, the (parsed.scheme, parsed.netloc, parsed.path) have ALREADY been discovered before.
-                        
-            # Check if the same query exists in the dictionary with appended values
-            if frozenset(query_params.items()) in self.url_dictionary[url_key]:
-                return True  # History trap detected
-
-         # Check if the query is of a certain length
-        if len(query_params) > max_query_length:
-            return True  # History trap detected due to excessive query length
-
-        ''' OUR OLD WAY OF HISTORY TRAP DETECTION
-
+        
         if query_params:
-           
             for key, value in query_params.items():
                 if len(value) > 1: # multiple occurences for the same query param
                     self.query_params[key] = value
@@ -294,13 +281,14 @@ class Crawler:
                     return True
                 
             if len(query_params) > 20: # has a very large number of parameters
-                        self.query_params[key] = value
-                        return True
-        '''
+                    return True
+        return False
+
+    def has_invalid_patterns(self, url):
+        path_segments = url.split('/')
+        #parsed = urlparse(url)
+        #query_params = parse_qs(parsed.query)
                     
-                    
-                    
-        
         # 1: check if there are repeating sub-directories in general
         for i in range(len(path_segments)):
             if path_segments[i] != "" and path_segments.count(path_segments[i]) > 1:
@@ -308,7 +296,7 @@ class Crawler:
                 return True
         
         # 2. Check for incrementing/decrementing numerical patterns for the parameters
-        if re.search(r'/\d+/\d+/', url): # https://poop.com/123/456
+        if re.search(r'/\d+/\d+/', url):
             return True
 
         # 3. Check a timestamp or session id pattern
@@ -329,25 +317,42 @@ class Crawler:
         #     if historical_paths in self.discovered:
         #         print("Found a historical trap")
         #         return True
+        
+        return False #if no invalid patterns are found
+    def is_history_trap(self, url):
+        '''ADDED CODE'''
+        # NEW WAY OF HISTORY DETECTION: 
+        parsed = urlparse(url)
+        query_params = parse_qs(parsed.query)
+        url_key = (parsed.scheme, parsed.netloc, parsed.path)
+        
+        if url_key not in self.url_dictionary:
+            self.url_dictionary[url_key] = (set(), 0)
+        else:
+            # * In this block, the (parsed.scheme, parsed.netloc, parsed.path) have ALREADY been discovered before.
+                        
+            # Check if the same query exists in the dictionary with appended values
+            if len(self.url_dictionary[url_key]) > 0 and self.url_dictionary[url_key][0].issubset(set(query_params.items())):
+                self.url_dictionary[url_key][1] += 1
 
-        #5 Check to see if query params only differ by integer changes
-        
-        
-        
-        
-        
-        
+                if self.url_dictionary[url_key][1] >= 3:
+                    return True  # History trap detected
+            
         '''ADDED CODE'''
         # Else, Update the dictionary with the current query parameters for future comparisons
-        self.url_dictionary[url_key].add(frozenset(query_params.items()))
-        for key, value in query_params.items():
-            self.query_params[key] = value
+        self.url_dictionary[url_key] = (set(query_params.items()), self.url_dictionary[url_key][1]) # tuple data structure containing counter and set of query params
+                
         
-
+        # https://amazon.com/search?query=shoes&sort=price --> https://amazon.com/search?query=shoes&sort=price&filter=brand --> https://amazon.com/search?query=shoes&filter=brand&color=re
 
         return False  # No history trap
-    
+            # https://amazon.com/search?query=shoes&sort=price --> https://amazon.com/search?query=shoes&sort=price&filter=brand --> https://amazon.com/search?query=shoes&sort=price&filter=brand&color=red
+            # Number of elements in the set increases, with A being a subset of B, and B being a subset of C
 
+            # Diff query parameters are associated with a count + set of query parameters
+
+            #tuple of how many times it's been rediscovered where we compare the old set to the new set and the old is a subset of the new. If this happens more than X times, SUS, history trap?
+        
     def is_stop_word(self, word):
         return word in self.stop_words
     
